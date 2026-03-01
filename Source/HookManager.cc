@@ -52,7 +52,7 @@ namespace WPSProfileVerificationPatch {
 
     size_t HookManager::UninstallHooks(const std::vector<std::unique_ptr<IFunctionHook>>& hooks) {
         if (hooks.size() == 0) {
-            return;
+            return 0;
         }
 
         DetourTransactionBegin();

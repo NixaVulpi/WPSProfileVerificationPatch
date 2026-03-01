@@ -21,8 +21,7 @@ BOOL APIENTRY DllMain(HMODULE module, DWORD reasonForCall, LPVOID reserved) {
 #if defined WP_PACKET
             _hooks.push_back(std::make_unique<CreateFileHook>());
 #endif
-            size_t count = HookManager::InstallHooks(_hooks);
-            if (count != _hooks.size()) {
+            if (HookManager::InstallHooks(_hooks) != _hooks.size()) {
                 HookManager::UninstallHooks(_hooks);
             }
             break;

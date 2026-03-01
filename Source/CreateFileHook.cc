@@ -1,29 +1,21 @@
 #include <Windows.h>
 #include <memory>
+#include <array>
+#include <sstream>
 #include <stdexcept>
 #include "CreateFileHook.h"
 #include "ModuleUtil.h"
 #include "FileUtil.h"
 
 namespace WPSProfileVerificationPatch {
+    static const std::array<std::pair<std::wstring, std::wstring>, 4> _rules = {
+        std::make_pair(L"\\CONTROL\\product.dat", L"product.dat"),
+        std::make_pair(L"\\CONTROL\\product_new.dat", L"product_new.dat"),
+        std::make_pair(L"\\CONTROL\\wpsplus\\product.dat", L"wpsplus_product.dat"),
+        std::make_pair(L"\\CONTROL\\wpsplus\\product_new.dat", L"wpsplus_product_new.dat")
+    };
+
     HANDLE(WINAPI* CreateFileHook::createFileW)(LPCWSTR, DWORD, DWORD, LPSECURITY_ATTRIBUTES, DWORD, DWORD, HANDLE) = nullptr;
-
-    static bool IsProductDatW(LPCWSTR fileName) {
-        if (!fileName) {
-            return false;
-        }
-
-        constexpr const wchar_t target[] = L"product.dat";
-        constexpr size_t targetLen = sizeof(target) / sizeof(wchar_t) - 1;
-
-        size_t inputLen = std::wcslen(fileName);
-        if (inputLen < targetLen) {
-            return false;
-        }
-
-        LPCWSTR tail = fileName + (inputLen - targetLen);
-        return std::wmemcmp(tail, target, targetLen) == 0;
-    }
 
     HANDLE WINAPI CreateFileHook::CreateFileW(
         LPCWSTR lpFileName,
@@ -34,12 +26,45 @@ namespace WPSProfileVerificationPatch {
         DWORD dwFlagsAndAttributes,
         HANDLE hTemplateFile
     ) {
-        if (dwDesiredAccess & GENERIC_WRITE && IsProductDatW(lpFileName)) {
+        if (lpFileName && dwDesiredAccess & GENERIC_WRITE) {
             HMODULE module = ModuleUtil::GetSelfHandle();
-            std::wstring productDatPath = ModuleUtil::GetBasePathW(module) + L"product.dat";
-            if (FileUtil::IsFileExistsW(productDatPath)) {
-                CopyFileW(productDatPath.data(), lpFileName, FALSE);
-                return INVALID_HANDLE_VALUE;
+            std::wstring basePath = ModuleUtil::GetBasePathW(module);
+
+            for (const auto& rule : _rules) {
+                if (FileUtil::EndsWithW(lpFileName, rule.first)) {
+                    std::wstring sourcePath = basePath + rule.second;
+
+#if defined WP_DEBUG
+                    std::wstringstream ss;
+                    ss << L"Intercepted write to:\r\n";
+                    ss << L"Target: " << std::wstring(lpFileName) << L"\r\n";
+                    ss << L"Source: " << sourcePath << L"\r\n";
+                    ss << L"Rule: " << rule.first;
+
+                    MessageBoxW(nullptr, ss.str().data(), L"CreateFile Debug Information", MB_ICONINFORMATION);
+#endif
+
+                    if (FileUtil::IsFileExistsW(sourcePath)) {
+                        if (CopyFileW(sourcePath.data(), lpFileName, FALSE)) {
+#if defined(WP_DEBUG)
+                            MessageBoxW(nullptr, L"File copied successfully.", L"CreateFile Debug Information", MB_ICONASTERISK);
+#endif
+                            return INVALID_HANDLE_VALUE;
+                        } else {
+#if defined(WP_DEBUG)
+                            std::wstringstream ss;
+                            ss << L"Failed to copy file. Error code: " << GetLastError();
+                            MessageBoxW(nullptr, ss.str().data(), L"CreateFile Debug Information", MB_ICONWARNING);
+#endif
+                        }
+                    } else {
+#if defined(WP_DEBUG)
+                        std::wstringstream ss;
+                        ss << L"Source file not found: " << sourcePath;
+                        MessageBoxW(nullptr, ss.str().data(), L"CreateFile Debug Information", MB_ICONWARNING);
+#endif
+                    }
+                }
             }
         }
 
