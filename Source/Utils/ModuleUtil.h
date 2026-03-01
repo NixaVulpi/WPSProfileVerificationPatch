@@ -18,6 +18,7 @@ namespace WPSProfileVerificationPatch {
         static std::wstring GetFileNameW(HMODULE module = nullptr);
         static std::string GetBasePathA(HMODULE module = nullptr);
         static std::wstring GetBasePathW(HMODULE module = nullptr);
+        static size_t GetSize(HMODULE module = nullptr);
         static std::span<const uint8_t> GetMemoryRegion(HMODULE module = nullptr);
     };
 }

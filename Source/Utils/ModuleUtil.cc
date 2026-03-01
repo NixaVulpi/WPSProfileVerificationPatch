@@ -68,24 +68,21 @@ namespace WPSProfileVerificationPatch {
         return fileName;
     }
 
+    size_t ModuleUtil::GetSize(HMODULE module) {
+        if (!module) {
+            module = GetHandleW(std::nullopt);
+        }
+        MODULEINFO mi;
+        if (!GetModuleInformation(GetCurrentProcess(), module, &mi, sizeof(mi))) {
+            throw std::runtime_error("Failed to get program module size");
+        }
+        return mi.SizeOfImage;
+    }
+
     std::span<const uint8_t> ModuleUtil::GetMemoryRegion(HMODULE module) {
         if (!module) {
             module = GetHandleW(std::nullopt);
         }
-
-        LPBYTE base = reinterpret_cast<LPBYTE>(module);
-
-        PIMAGE_DOS_HEADER dosHeader = reinterpret_cast<PIMAGE_DOS_HEADER>(base);
-        if (dosHeader->e_magic != IMAGE_DOS_SIGNATURE) {
-            throw std::runtime_error("Invalid DOS header signature.");
-        }
-
-        PIMAGE_NT_HEADERS ntHeaders = reinterpret_cast<PIMAGE_NT_HEADERS>(base + dosHeader->e_lfanew);
-        if (ntHeaders->Signature != IMAGE_NT_SIGNATURE) {
-            throw std::runtime_error("Invalid NT header signature.");
-        }
-
-        SIZE_T sizeOfImage = ntHeaders->OptionalHeader.SizeOfImage;
-        return std::span<const uint8_t>(reinterpret_cast<const uint8_t*>(base), base + sizeOfImage);
+        return std::span<const uint8_t>(reinterpret_cast<const uint8_t*>(module), GetSize(module));
     }
 }
