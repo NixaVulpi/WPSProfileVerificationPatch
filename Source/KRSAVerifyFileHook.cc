@@ -74,7 +74,7 @@ namespace WPSProfileVerificationPatch {
         if (internalName.has_value() && internalName->size() >= 8 && std::memcmp(internalName->data(), L"KPacket", 14) == 0) {
             // InternalName 以 KPacket 开头表明这是安装程序，要在主模块中查找特征码
             HMODULE module = ModuleUtil::GetHandleW(std::nullopt);
-            region = ModuleUtil::GetMemoryRegion();
+            region = ModuleUtil::GetMemoryRegion(module);
         } else {
             throw std::runtime_error("KRSAVerifyFileHook can only be installed in the installer module");
         }
