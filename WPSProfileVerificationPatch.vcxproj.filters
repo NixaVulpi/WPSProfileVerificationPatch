@@ -42,9 +42,6 @@
     <ClCompile Include="Source\Utils\ModuleUtil.cc">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Source\ProxyLibrary\NCrypt\ProxyLibraryGlobals.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="Source\Utils\VersionUtil.cc">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -55,6 +52,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Source\CreateFileHook.cc">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\ProxyLibrary\NCrypt\ProxyLibraryGlobals.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Utils\WPSProductUtil.cc">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -92,6 +95,9 @@
     <ClInclude Include="Source\CreateFileHook.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Utils\WPSProductUtil.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="Source\ProxyLibrary\Msi\ProxyLibraryExports.def">
@@ -105,13 +111,13 @@
     <MASM Include="Source\ProxyLibrary\Msi\ProxyLibraryExportsI386.asm">
       <Filter>Source Files</Filter>
     </MASM>
-    <MASM Include="Source\ProxyLibrary\NCrypt\ProxyLibraryExportsI386.asm">
-      <Filter>Source Files</Filter>
-    </MASM>
     <MASM Include="Source\ProxyLibrary\Msi\ProxyLibraryExportsAmd64.asm">
       <Filter>Source Files</Filter>
     </MASM>
     <MASM Include="Source\ProxyLibrary\NCrypt\ProxyLibraryExportsAmd64.asm">
+      <Filter>Source Files</Filter>
+    </MASM>
+    <MASM Include="Source\ProxyLibrary\NCrypt\ProxyLibraryExportsI386.asm">
       <Filter>Source Files</Filter>
     </MASM>
   </ItemGroup>

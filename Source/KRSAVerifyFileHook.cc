@@ -1,7 +1,6 @@
 #include <Windows.h>
 #include <stdexcept>
 #include <sstream>
-#include <format>
 #include <memory>
 #include <array>
 #include "Detours.h"
@@ -9,7 +8,6 @@
 #include "FileUtil.h"
 #include "ModuleUtil.h"
 #include "PatternUtil.h"
-#include "VersionUtil.h"
 
 namespace WPSProfileVerificationPatch {
     bool (*KRSAVerifyFileHook::kRSAVerifyFile)(const std::string& publicKey, const std::string& fileHash, const std::string& fileSignature) = nullptr;
@@ -42,6 +40,14 @@ namespace WPSProfileVerificationPatch {
     }
 
     void KRSAVerifyFileHook::LocateTarget() const {
+        std::span<const uint8_t> region = GetSearchRegion();
+        if (region.empty()) {
+            throw std::runtime_error("Failed to get memory region for search");
+        }
+        LocateTargetInRegion(region);
+    }
+
+    void KRSAVerifyFileHook::LocateTargetInRegion(std::span<const uint8_t> region) const {
 #if defined DETOURS_ARM64
         const std::array<uint16_t, 18> anchor = { 0x00, 0xD0, 0xFFFF, 0xFFFF, 0xFFFF, 0x91, 0xFFFF, 0xFFFF, 0x00, 0xD0, 0xFFFF, 0xFFFF, 0xFFFF, 0x91, 0xFFFF, 0x5A, 0x00, 0xA9 };
         const std::array<uint16_t, 4> prologue = { 0xFD, 0xFFFF, 0xFFFF, 0xA9 };
@@ -54,54 +60,15 @@ namespace WPSProfileVerificationPatch {
 #else
 #error "Unsupported architecture"
 #endif
-        std::wstring fileName = ModuleUtil::GetFileNameW(nullptr);
-        std::unique_ptr<const uint8_t[]> versionInfoData = VersionUtil::GetVersionInfoDataW(fileName);
-        std::optional<std::span<const uint8_t>> translation = VersionUtil::QueryVersionInfoValueW(versionInfoData, L"\\VarFileInfo\\Translation");
-        if (!translation.has_value()) {
-            // 没有找到 Translation，不进行 Hook
-            throw std::runtime_error("Failed to find Translation in version info");
-        }
-        uint16_t langId = *reinterpret_cast<const uint16_t*>(translation->data());
-        uint16_t codePage = *reinterpret_cast<const uint16_t*>(translation->data() + 2);
-        std::optional<std::span<const uint8_t>> productName = VersionUtil::QueryVersionInfoValueW(versionInfoData, std::format(L"\\StringFileInfo\\{:04x}{:04x}\\ProductName", langId, codePage));
-        if (!productName.has_value() || productName->size() != 11 || std::memcmp(productName->data(), L"WPS Office", 22) != 0) {
-            // ProductName 不是 WPS Office，不进行 Hook
-            throw std::runtime_error("ProductName is not WPS Office");
-        }
-        std::span<const uint8_t> region;
-#if defined WP_PACKET
-        std::optional<std::span<const uint8_t>> internalName = VersionUtil::QueryVersionInfoValueW(versionInfoData, std::format(L"\\StringFileInfo\\{:04x}{:04x}\\InternalName", langId, codePage));
-        if (internalName.has_value() && internalName->size() >= 8 && std::memcmp(internalName->data(), L"KPacket", 14) == 0) {
-            // InternalName 以 KPacket 开头表明这是安装程序，要在主模块中查找特征码
-            HMODULE module = ModuleUtil::GetHandleW(std::nullopt);
-            region = ModuleUtil::GetMemoryRegion(module);
-        } else {
-            throw std::runtime_error("KRSAVerifyFileHook can only be installed in the installer module");
-        }
-#elif defined WP_MAIN
-        HMODULE module = ModuleUtil::GetSelfHandle();
-        std::wstring krtPath = ModuleUtil::GetBasePathW(module) + L"krt.dll";
-        if (FileUtil::IsFileExistsW(krtPath)) {
-            // 本模块目录下存在 krt.dll 表明这是主程序，要在 krt.dll 中查找特征码
-            // 本模块加载时 krt.dll 还未被加载，要主动加载本模块同目录下的 krt.dll
-            HMODULE krtModule = LoadLibraryW(krtPath.data());
-            if (!krtModule) {
-                throw std::runtime_error("Failed to load krt.dll");
-            }
-            region = ModuleUtil::GetMemoryRegion(krtModule);
-        } else {
-            throw std::runtime_error("KRSAVerifyFileHook can only be installed in the main module with krt.dll loaded");
-        }
-#else
-#error "Either WP_PACKET or WP_MAIN must be defined"
-#endif
+
 #if defined WP_DEBUG
         constexpr size_t maxMatches = 2;
 #else
         constexpr size_t maxMatches = 1;
 #endif
+
         std::vector<const uint8_t*> anchors = PatternUtil::FindPattern(region, anchor, 0, false, maxMatches);
-        if (anchors.size() == 0) {
+        if (anchors.empty()) {
             throw std::runtime_error("Failed to find KRSAVerifyFile anchor");
         }
 #if defined WP_DEBUG
@@ -110,10 +77,50 @@ namespace WPSProfileVerificationPatch {
         }
 #endif
         std::vector<const uint8_t*> prologues = PatternUtil::FindPattern(region, prologue, anchors[0] - region.data(), true, 1);
-        if (prologues.size() == 0) {
+        if (prologues.empty()) {
             throw std::runtime_error("Failed to find KRSAVerifyFile prologue");
         }
         kRSAVerifyFile = reinterpret_cast<decltype(kRSAVerifyFile)>(prologues[0]);
+    }
+
+    std::span<const uint8_t> KRSAVerifyFileHookPacket::GetSearchRegion() const {
+        HMODULE module = ModuleUtil::GetHandleW(std::nullopt);
+        return ModuleUtil::GetMemoryRegion(module);
+    }
+
+    std::span<const uint8_t> KRSAVerifyFileHookKrt::GetSearchRegion() const {
+        HMODULE module = ModuleUtil::GetSelfHandle();
+        std::wstring basePath = ModuleUtil::GetBasePathW(module);
+        std::wstring krtPath = basePath + L"krt.dll";
+
+        if (FileUtil::IsFileExistsW(krtPath)) {
+            HMODULE krtModule = LoadLibraryW(krtPath.data());
+            if (!krtModule) throw std::runtime_error("Failed to load krt.dll");
+            return ModuleUtil::GetMemoryRegion(krtModule);
+        }
+        throw std::runtime_error("krt.dll not found");
+    }
+
+    std::span<const uint8_t> KRSAVerifyFileHookConfigCenter::GetSearchRegion() const {
+#if defined DETOURS_X86
+#define KBASECONFIGCENTER_SUFFIX_W L""
+#define KBASECONFIGCENTER_SUFFIX ""
+#else
+#define KBASECONFIGCENTER_SUFFIX_W L"64"
+#define KBASECONFIGCENTER_SUFFIX "64"
+#endif
+
+        HMODULE module = ModuleUtil::GetSelfHandle();
+        std::wstring basePath = ModuleUtil::GetBasePathW(module);
+
+        std::wstring dllPath = basePath + L"kbaseconfigcenter" KBASECONFIGCENTER_SUFFIX_W L".dll";
+
+        if (FileUtil::IsFileExistsW(dllPath)) {
+            HMODULE targetModule = LoadLibraryW(dllPath.data());
+            if (!targetModule) throw std::runtime_error("Failed to load kbaseconfigcenter" KBASECONFIGCENTER_SUFFIX ".dll");
+            return ModuleUtil::GetMemoryRegion(targetModule);
+        }
+        throw std::runtime_error("kbaseconfigcenter" KBASECONFIGCENTER_SUFFIX ".dll not found");
     }
 
     PVOID* KRSAVerifyFileHook::GetOriginalPointer() const {

@@ -99,6 +99,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='PacketDebug|ARM64EC'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='PacketDebug|ARM64'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="Source\Utils\WPSProductUtil.cc" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Source\Detours\Detours.h" />
@@ -112,6 +113,7 @@
     <ClInclude Include="Source\CreateFileHook.h" />
     <ClInclude Include="Source\ProxyLibrary\ProxyLibrary.h" />
     <ClInclude Include="Source\ProxyLibrary\ProxyLibraryGlobals.h" />
+    <ClInclude Include="Source\Utils\WPSProductUtil.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Source\ProxyLibrary\Msi\ProxyLibraryExports.def" />
