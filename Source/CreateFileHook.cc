@@ -99,6 +99,6 @@ namespace WPSProfileVerificationPatch {
     }
 
     const char* CreateFileHook::GetName() const {
-        return "CreateFile";
+        return "CreateFileHook";
     }
 }

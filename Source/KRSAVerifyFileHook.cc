@@ -98,7 +98,7 @@ namespace WPSProfileVerificationPatch {
     }
 
     const char* KRSAVerifyFilePacketHook::GetName() const {
-        return "KRSAVerifyFileHookPacket";
+        return "KRSAVerifyFilePacketHook";
     }
 
     std::span<const uint8_t> KRSAVerifyFileKrtHook::GetSearchRegion() const {
@@ -121,7 +121,7 @@ namespace WPSProfileVerificationPatch {
     }
 
     const char* KRSAVerifyFileKrtHook::GetName() const {
-        return "KRSAVerifyFileHookKrt";
+        return "KRSAVerifyFileKrtHook";
     }
 
     std::span<const uint8_t> KRSAVerifyFileConfigCenterHook::GetSearchRegion() const {
@@ -153,6 +153,6 @@ namespace WPSProfileVerificationPatch {
     }
 
     const char* KRSAVerifyFileConfigCenterHook::GetName() const {
-        return "KRSAVerifyFileHookConfigCenter";
+        return "KRSAVerifyFileConfigCenterHook";
     }
 }
