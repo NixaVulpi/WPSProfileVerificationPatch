@@ -18,7 +18,6 @@ namespace WPSProfileVerificationPatch {
 
     void HookManager::ClearHooks() {
         _hooks.clear();
-        _targets.clear();
     }
 
     size_t HookManager::InstallHooks() {
