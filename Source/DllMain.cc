@@ -19,11 +19,11 @@ BOOL APIENTRY DllMain(HMODULE module, DWORD reasonForCall, LPVOID reserved) {
                 break;
             }
 #if defined WP_PACKET
-            KRSAVerifyFileHookPacket::Register();
+            KRSAVerifyFilePacketHook::Register();
             CreateFileHook::Register();
 #elif defined WP_MAIN
-            KRSAVerifyFileHookConfigCenter::Register();
-            KRSAVerifyFileHookKrt::Register();
+            KRSAVerifyFileConfigCenterHook::Register();
+            KRSAVerifyFileKrtHook::Register();
 #endif
             HookManager::GetInstance().InstallHooks();
             break;

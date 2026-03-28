@@ -16,9 +16,9 @@ namespace WPSProfileVerificationPatch {
         virtual std::span<const uint8_t> GetSearchRegion() const = 0;
     };
 
-    class KRSAVerifyFileHookPacket : public KRSAVerifyFileHook, public SingletonHook<KRSAVerifyFileHookPacket> {
+    class KRSAVerifyFilePacketHook : public KRSAVerifyFileHook, public SingletonHook<KRSAVerifyFilePacketHook> {
     public:
-        friend class SingletonHook<KRSAVerifyFileHookPacket>;
+        friend class SingletonHook<KRSAVerifyFilePacketHook>;
 
         HookTarget LocateTarget() const override;
         const char* GetName() const override;
@@ -27,12 +27,12 @@ namespace WPSProfileVerificationPatch {
         std::span<const uint8_t> GetSearchRegion() const override;
 
     private:
-        KRSAVerifyFileHookPacket() = default;
+        KRSAVerifyFilePacketHook() = default;
     };
 
-    class KRSAVerifyFileHookKrt : public KRSAVerifyFileHook, public SingletonHook<KRSAVerifyFileHookKrt> {
+    class KRSAVerifyFileKrtHook : public KRSAVerifyFileHook, public SingletonHook<KRSAVerifyFileKrtHook> {
     public:
-        friend class SingletonHook<KRSAVerifyFileHookKrt>;
+        friend class SingletonHook<KRSAVerifyFileKrtHook>;
 
         HookTarget LocateTarget() const override;
         const char* GetName() const override;
@@ -41,12 +41,12 @@ namespace WPSProfileVerificationPatch {
         std::span<const uint8_t> GetSearchRegion() const override;
 
     private:
-        KRSAVerifyFileHookKrt() = default;
+        KRSAVerifyFileKrtHook() = default;
     };
 
-    class KRSAVerifyFileHookConfigCenter : public KRSAVerifyFileHook, public SingletonHook<KRSAVerifyFileHookConfigCenter> {
+    class KRSAVerifyFileConfigCenterHook : public KRSAVerifyFileHook, public SingletonHook<KRSAVerifyFileConfigCenterHook> {
     public:
-        friend class SingletonHook<KRSAVerifyFileHookConfigCenter>;
+        friend class SingletonHook<KRSAVerifyFileConfigCenterHook>;
 
         HookTarget LocateTarget() const override;
         const char* GetName() const override;
@@ -55,6 +55,6 @@ namespace WPSProfileVerificationPatch {
         std::span<const uint8_t> GetSearchRegion() const override;
 
     private:
-        KRSAVerifyFileHookConfigCenter() = default;
+        KRSAVerifyFileConfigCenterHook() = default;
     };
 }

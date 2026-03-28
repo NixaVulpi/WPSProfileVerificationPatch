@@ -88,20 +88,20 @@ namespace WPSProfileVerificationPatch {
         };
     }
 
-    std::span<const uint8_t> KRSAVerifyFileHookPacket::GetSearchRegion() const {
+    std::span<const uint8_t> KRSAVerifyFilePacketHook::GetSearchRegion() const {
         HMODULE module = ModuleUtil::GetHandleW(std::nullopt);
         return ModuleUtil::GetMemoryRegion(module);
     }
 
-    IFunctionHook::HookTarget KRSAVerifyFileHookPacket::LocateTarget() const {
+    IFunctionHook::HookTarget KRSAVerifyFilePacketHook::LocateTarget() const {
         return KRSAVerifyFileHook::LocateTarget();
     }
 
-    const char* KRSAVerifyFileHookPacket::GetName() const {
+    const char* KRSAVerifyFilePacketHook::GetName() const {
         return "KRSAVerifyFileHookPacket";
     }
 
-    std::span<const uint8_t> KRSAVerifyFileHookKrt::GetSearchRegion() const {
+    std::span<const uint8_t> KRSAVerifyFileKrtHook::GetSearchRegion() const {
         HMODULE module = ModuleUtil::GetSelfHandle();
         std::wstring basePath = ModuleUtil::GetBasePathW(module);
         std::wstring krtPath = basePath + L"krt.dll";
@@ -116,15 +116,15 @@ namespace WPSProfileVerificationPatch {
         throw std::runtime_error("krt.dll not found");
     }
 
-    IFunctionHook::HookTarget KRSAVerifyFileHookKrt::LocateTarget() const {
+    IFunctionHook::HookTarget KRSAVerifyFileKrtHook::LocateTarget() const {
         return KRSAVerifyFileHook::LocateTarget();
     }
 
-    const char* KRSAVerifyFileHookKrt::GetName() const {
+    const char* KRSAVerifyFileKrtHook::GetName() const {
         return "KRSAVerifyFileHookKrt";
     }
 
-    std::span<const uint8_t> KRSAVerifyFileHookConfigCenter::GetSearchRegion() const {
+    std::span<const uint8_t> KRSAVerifyFileConfigCenterHook::GetSearchRegion() const {
 #if defined DETOURS_X86
 #define KBASECONFIGCENTER_SUFFIX_W L""
 #define KBASECONFIGCENTER_SUFFIX ""
@@ -148,11 +148,11 @@ namespace WPSProfileVerificationPatch {
         throw std::runtime_error("kbaseconfigcenter" KBASECONFIGCENTER_SUFFIX ".dll not found");
     }
 
-    IFunctionHook::HookTarget KRSAVerifyFileHookConfigCenter::LocateTarget() const {
+    IFunctionHook::HookTarget KRSAVerifyFileConfigCenterHook::LocateTarget() const {
         return KRSAVerifyFileHook::LocateTarget();
     }
 
-    const char* KRSAVerifyFileHookConfigCenter::GetName() const {
+    const char* KRSAVerifyFileConfigCenterHook::GetName() const {
         return "KRSAVerifyFileHookConfigCenter";
     }
 }
