@@ -3,37 +3,58 @@
 #include <string>
 #include <span>
 #include "IFunctionHook.h"
+#include "SingletonHook.h"
 
 namespace WPSProfileVerificationPatch {
-    class KRSAVerifyFileHook : public IFunctionHook {
+    class KRSAVerifyFileHook : public virtual IFunctionHook {
     public:
-        static bool (*kRSAVerifyFile)(const std::string&, const std::string&, const std::string&);
+        HookTarget LocateTarget() const override;
+        const char* GetName() const override = 0;
 
-        static bool KRSAVerifyFile(const std::string& publicKey, const std::string& fileHash, const std::string& fileSignature);
+    protected:
+        KRSAVerifyFileHook() = default;
+        virtual std::span<const uint8_t> GetSearchRegion() const = 0;
+    };
 
-        void LocateTarget() const override;
-        PVOID* GetOriginalPointer() const override;
-        PVOID GetDetourFunction() const override;
+    class KRSAVerifyFileHookPacket : public KRSAVerifyFileHook, public SingletonHook<KRSAVerifyFileHookPacket> {
+    public:
+        friend class SingletonHook<KRSAVerifyFileHookPacket>;
+
+        HookTarget LocateTarget() const override;
         const char* GetName() const override;
 
-        virtual std::span<const uint8_t> GetSearchRegion() const = 0;
+    protected:
+        std::span<const uint8_t> GetSearchRegion() const override;
 
     private:
-        void LocateTargetInRegion(std::span<const uint8_t> region) const;
+        KRSAVerifyFileHookPacket() = default;
     };
 
-    class KRSAVerifyFileHookPacket : public KRSAVerifyFileHook {
+    class KRSAVerifyFileHookKrt : public KRSAVerifyFileHook, public SingletonHook<KRSAVerifyFileHookKrt> {
     public:
+        friend class SingletonHook<KRSAVerifyFileHookKrt>;
+
+        HookTarget LocateTarget() const override;
+        const char* GetName() const override;
+
+    protected:
         std::span<const uint8_t> GetSearchRegion() const override;
+
+    private:
+        KRSAVerifyFileHookKrt() = default;
     };
 
-    class KRSAVerifyFileHookKrt : public KRSAVerifyFileHook {
+    class KRSAVerifyFileHookConfigCenter : public KRSAVerifyFileHook, public SingletonHook<KRSAVerifyFileHookConfigCenter> {
     public:
-        std::span<const uint8_t> GetSearchRegion() const override;
-    };
+        friend class SingletonHook<KRSAVerifyFileHookConfigCenter>;
 
-    class KRSAVerifyFileHookConfigCenter : public KRSAVerifyFileHook {
-    public:
+        HookTarget LocateTarget() const override;
+        const char* GetName() const override;
+
+    protected:
         std::span<const uint8_t> GetSearchRegion() const override;
+
+    private:
+        KRSAVerifyFileHookConfigCenter() = default;
     };
 }

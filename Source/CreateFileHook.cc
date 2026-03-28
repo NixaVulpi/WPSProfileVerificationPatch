@@ -15,9 +15,9 @@ namespace WPSProfileVerificationPatch {
         std::make_pair(L"\\CONTROL\\wpsplus\\product_new.dat", L"wpsplus_product_new.dat")
     };
 
-    HANDLE(WINAPI* CreateFileHook::createFileW)(LPCWSTR, DWORD, DWORD, LPSECURITY_ATTRIBUTES, DWORD, DWORD, HANDLE) = nullptr;
+    static HANDLE(WINAPI* _createFileW)(LPCWSTR, DWORD, DWORD, LPSECURITY_ATTRIBUTES, DWORD, DWORD, HANDLE) = nullptr;
 
-    HANDLE WINAPI CreateFileHook::CreateFileW(
+    static HANDLE WINAPI CreateFileW(
         LPCWSTR lpFileName,
         DWORD dwDesiredAccess,
         DWORD dwShareMode,
@@ -68,7 +68,7 @@ namespace WPSProfileVerificationPatch {
             }
         }
 
-        return createFileW(
+        return _createFileW(
             lpFileName,
             dwDesiredAccess,
             dwShareMode,
@@ -79,7 +79,7 @@ namespace WPSProfileVerificationPatch {
         );
     }
 
-    void CreateFileHook::LocateTarget() const {
+    IFunctionHook::HookTarget CreateFileHook::LocateTarget() const {
         HMODULE kernel32 = GetModuleHandleW(L"kernel32.dll");
         if (!kernel32) {
             throw std::runtime_error("Failed to get kernel32.dll handle");
@@ -90,15 +90,12 @@ namespace WPSProfileVerificationPatch {
             throw std::runtime_error("Failed to find CreateFileW");
         }
 
-        createFileW = reinterpret_cast<decltype(createFileW)>(addressW);
-    }
+        _createFileW = reinterpret_cast<decltype(_createFileW)>(addressW);
 
-    PVOID* CreateFileHook::GetOriginalPointer() const {
-        return reinterpret_cast<PVOID*>(&createFileW);
-    }
-
-    PVOID CreateFileHook::GetDetourFunction() const {
-        return reinterpret_cast<PVOID>(&CreateFileW);
+        return {
+            reinterpret_cast<PVOID*>(&_createFileW),
+            reinterpret_cast<PVOID>(CreateFileW)
+        };
     }
 
     const char* CreateFileHook::GetName() const {

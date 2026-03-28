@@ -102,6 +102,7 @@
     <ClCompile Include="Source\Utils\WPSProductUtil.cc" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Source\SingletonHook.h" />
     <ClInclude Include="Source\Detours\Detours.h" />
     <ClInclude Include="Source\Utils\FileUtil.h" />
     <ClInclude Include="Source\Utils\VersionUtil.h" />

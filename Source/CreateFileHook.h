@@ -1,25 +1,16 @@
 #pragma once
 #include <string>
-#include "IFunctionHook.h"
+#include "SingletonHook.h"
 
 namespace WPSProfileVerificationPatch {
-    class CreateFileHook : public IFunctionHook {
+    class CreateFileHook : public SingletonHook<CreateFileHook> {
     public:
-        static HANDLE(WINAPI* createFileW)(LPCWSTR lpFileName, DWORD dwDesiredAccess, DWORD dwShareMode, LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition, DWORD dwFlagsAndAttributes, HANDLE hTemplateFile);
+        friend class SingletonHook<CreateFileHook>;
 
-        static HANDLE WINAPI CreateFileW(
-            LPCWSTR lpFileName,
-            DWORD dwDesiredAccess,
-            DWORD dwShareMode,
-            LPSECURITY_ATTRIBUTES lpSecurityAttributes,
-            DWORD dwCreationDisposition,
-            DWORD dwFlagsAndAttributes,
-            HANDLE hTemplateFile
-        );
-
-        void LocateTarget() const override;
-        PVOID* GetOriginalPointer() const override;
-        PVOID GetDetourFunction() const override;
+        HookTarget LocateTarget() const override;
         const char* GetName() const override;
+
+    private:
+        CreateFileHook() = default;
     };
 }

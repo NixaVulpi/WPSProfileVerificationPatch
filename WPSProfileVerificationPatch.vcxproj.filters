@@ -98,6 +98,9 @@
     <ClInclude Include="Source\Utils\WPSProductUtil.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Source\SingletonHook.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="Source\ProxyLibrary\Msi\ProxyLibraryExports.def">

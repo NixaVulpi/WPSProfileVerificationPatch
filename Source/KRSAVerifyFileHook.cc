@@ -10,9 +10,9 @@
 #include "PatternUtil.h"
 
 namespace WPSProfileVerificationPatch {
-    bool (*KRSAVerifyFileHook::kRSAVerifyFile)(const std::string& publicKey, const std::string& fileHash, const std::string& fileSignature) = nullptr;
+    static bool (*_kRSAVerifyFile)(const std::string& publicKey, const std::string& fileHash, const std::string& fileSignature) = nullptr;
 
-    bool KRSAVerifyFileHook::KRSAVerifyFile(const std::string& publicKey, const std::string& fileHash, const std::string& fileSignature) {
+    static bool KRSAVerifyFile(const std::string& publicKey, const std::string& fileHash, const std::string& fileSignature) {
 #if defined WP_DEBUG
         std::stringstream ss;
         ss << "KRSAVerifyFile called with parameters:\r\n";
@@ -24,7 +24,7 @@ namespace WPSProfileVerificationPatch {
         // 如果数字签名全部为 0 则通过校验，否则调用原始校验函数
         for (char c : fileSignature) {
             if (c != '0') {
-                bool result = kRSAVerifyFile(publicKey, fileHash, fileSignature);
+                bool result = _kRSAVerifyFile(publicKey, fileHash, fileSignature);
 #if defined WP_DEBUG
                 ss << (result ? "Passed" : "Failed");
                 MessageBoxA(nullptr, ss.str().data(), "KRSAVerifyFile Debug Information", MB_ICONINFORMATION);
@@ -39,15 +39,7 @@ namespace WPSProfileVerificationPatch {
         return true;
     }
 
-    void KRSAVerifyFileHook::LocateTarget() const {
-        std::span<const uint8_t> region = GetSearchRegion();
-        if (region.empty()) {
-            throw std::runtime_error("Failed to get memory region for search");
-        }
-        LocateTargetInRegion(region);
-    }
-
-    void KRSAVerifyFileHook::LocateTargetInRegion(std::span<const uint8_t> region) const {
+    static void LocateTargetInRegion(std::span<const uint8_t> region) {
 #if defined DETOURS_ARM64
         const std::array<uint16_t, 18> anchor = { 0x00, 0xD0, 0xFFFF, 0xFFFF, 0xFFFF, 0x91, 0xFFFF, 0xFFFF, 0x00, 0xD0, 0xFFFF, 0xFFFF, 0xFFFF, 0x91, 0xFFFF, 0x5A, 0x00, 0xA9 };
         const std::array<uint16_t, 4> prologue = { 0xFD, 0xFFFF, 0xFFFF, 0xA9 };
@@ -80,12 +72,33 @@ namespace WPSProfileVerificationPatch {
         if (prologues.empty()) {
             throw std::runtime_error("Failed to find KRSAVerifyFile prologue");
         }
-        kRSAVerifyFile = reinterpret_cast<decltype(kRSAVerifyFile)>(prologues[0]);
+
+        _kRSAVerifyFile = reinterpret_cast<decltype(_kRSAVerifyFile)>(prologues[0]);
+    }
+
+    IFunctionHook::HookTarget KRSAVerifyFileHook::LocateTarget() const {
+        std::span<const uint8_t> region = GetSearchRegion();
+        if (region.empty()) {
+            throw std::runtime_error("Failed to get memory region for search");
+        }
+        LocateTargetInRegion(region);
+        return {
+            reinterpret_cast<PVOID*>(&_kRSAVerifyFile),
+            reinterpret_cast<PVOID>(KRSAVerifyFile)
+        };
     }
 
     std::span<const uint8_t> KRSAVerifyFileHookPacket::GetSearchRegion() const {
         HMODULE module = ModuleUtil::GetHandleW(std::nullopt);
         return ModuleUtil::GetMemoryRegion(module);
+    }
+
+    IFunctionHook::HookTarget KRSAVerifyFileHookPacket::LocateTarget() const {
+        return KRSAVerifyFileHook::LocateTarget();
+    }
+
+    const char* KRSAVerifyFileHookPacket::GetName() const {
+        return "KRSAVerifyFileHookPacket";
     }
 
     std::span<const uint8_t> KRSAVerifyFileHookKrt::GetSearchRegion() const {
@@ -95,10 +108,20 @@ namespace WPSProfileVerificationPatch {
 
         if (FileUtil::IsFileExistsW(krtPath)) {
             HMODULE krtModule = LoadLibraryW(krtPath.data());
-            if (!krtModule) throw std::runtime_error("Failed to load krt.dll");
+            if (!krtModule) {
+                throw std::runtime_error("Failed to load krt.dll");
+            }
             return ModuleUtil::GetMemoryRegion(krtModule);
         }
         throw std::runtime_error("krt.dll not found");
+    }
+
+    IFunctionHook::HookTarget KRSAVerifyFileHookKrt::LocateTarget() const {
+        return KRSAVerifyFileHook::LocateTarget();
+    }
+
+    const char* KRSAVerifyFileHookKrt::GetName() const {
+        return "KRSAVerifyFileHookKrt";
     }
 
     std::span<const uint8_t> KRSAVerifyFileHookConfigCenter::GetSearchRegion() const {
@@ -117,21 +140,19 @@ namespace WPSProfileVerificationPatch {
 
         if (FileUtil::IsFileExistsW(dllPath)) {
             HMODULE targetModule = LoadLibraryW(dllPath.data());
-            if (!targetModule) throw std::runtime_error("Failed to load kbaseconfigcenter" KBASECONFIGCENTER_SUFFIX ".dll");
+            if (!targetModule) {
+                throw std::runtime_error("Failed to load kbaseconfigcenter" KBASECONFIGCENTER_SUFFIX ".dll");
+            }
             return ModuleUtil::GetMemoryRegion(targetModule);
         }
         throw std::runtime_error("kbaseconfigcenter" KBASECONFIGCENTER_SUFFIX ".dll not found");
     }
 
-    PVOID* KRSAVerifyFileHook::GetOriginalPointer() const {
-        return reinterpret_cast<PVOID*>(&kRSAVerifyFile);
+    IFunctionHook::HookTarget KRSAVerifyFileHookConfigCenter::LocateTarget() const {
+        return KRSAVerifyFileHook::LocateTarget();
     }
 
-    PVOID KRSAVerifyFileHook::GetDetourFunction() const {
-        return reinterpret_cast<PVOID>(KRSAVerifyFile);
-    }
-
-    const char* KRSAVerifyFileHook::GetName() const {
-        return "KRSAVerifyFile";
+    const char* KRSAVerifyFileHookConfigCenter::GetName() const {
+        return "KRSAVerifyFileHookConfigCenter";
     }
 }

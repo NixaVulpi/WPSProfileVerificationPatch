@@ -4,14 +4,11 @@
 #include <vector>
 #include <memory>
 #include "ProxyLibrary.h"
-#include "HookManager.h"
 #include "KRSAVerifyFileHook.h"
 #include "CreateFileHook.h"
 #include "WPSProductUtil.h"
 
 using namespace WPSProfileVerificationPatch;
-
-static std::vector<std::unique_ptr<IFunctionHook>> _hooks;
 
 BOOL APIENTRY DllMain(HMODULE module, DWORD reasonForCall, LPVOID reserved) {
     switch (reasonForCall) {
@@ -22,20 +19,16 @@ BOOL APIENTRY DllMain(HMODULE module, DWORD reasonForCall, LPVOID reserved) {
                 break;
             }
 #if defined WP_PACKET
-            _hooks.push_back(std::make_unique<KRSAVerifyFileHookPacket>());
-            _hooks.push_back(std::make_unique<CreateFileHook>());
+            KRSAVerifyFileHookPacket::Register();
+            CreateFileHook::Register();
 #elif defined WP_MAIN
-            _hooks.push_back(std::make_unique<KRSAVerifyFileHookConfigCenter>());
-            _hooks.push_back(std::make_unique<KRSAVerifyFileHookKrt>());
+            KRSAVerifyFileHookConfigCenter::Register();
+            KRSAVerifyFileHookKrt::Register();
 #endif
-            if (HookManager::InstallHooks(_hooks) != _hooks.size()) {
-                HookManager::UninstallHooks(_hooks);
-                _hooks.clear();
-            }
+            HookManager::GetInstance().InstallHooks();
             break;
         case DLL_PROCESS_DETACH:
-            HookManager::UninstallHooks(_hooks);
-            _hooks.clear();
+            HookManager::GetInstance().UninstallHooks();
             ProxyLibrary_Unload();
             break;
     }

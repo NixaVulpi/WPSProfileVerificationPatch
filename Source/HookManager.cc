@@ -5,19 +5,40 @@
 #include "HookManager.h"
 
 namespace WPSProfileVerificationPatch {
-    size_t HookManager::InstallHooks(const std::vector<std::unique_ptr<IFunctionHook>>& hooks) {
-        if (hooks.size() == 0) {
+    HookManager& HookManager::GetInstance() {
+        static HookManager instance;
+        return instance;
+    }
+
+    void HookManager::AddHook(std::unique_ptr<IFunctionHook> hook) {
+        if (hook) {
+            _hooks.push_back(std::move(hook));
+        }
+    }
+
+    void HookManager::ClearHooks() {
+        _hooks.clear();
+        _targets.clear();
+    }
+
+    size_t HookManager::InstallHooks() {
+        if (_hooks.empty()) {
             return 0;
         }
+
+        _targets.clear();
+        _targets.reserve(_hooks.size());
 
         DetourTransactionBegin();
         DetourUpdateThread(GetCurrentThread());
 
         size_t count = 0;
 
-        for (auto& hook : hooks) {
+        for (const auto& hook : _hooks) {
+            IFunctionHook::HookTarget target = { nullptr, nullptr };
+
             try {
-                hook->LocateTarget();
+                target = hook->LocateTarget();
             } catch (const std::exception& e) {
 #if defined WP_DEBUG
                 MessageBoxA(nullptr, e.what(), (std::string("Hook Locate Failed: ") + hook->GetName()).c_str(), MB_ICONSTOP);
@@ -25,13 +46,13 @@ namespace WPSProfileVerificationPatch {
                 continue;
             }
 
-            PVOID* originalPointer = hook->GetOriginalPointer();
-
-            if (*originalPointer == nullptr) {
+            if (target.original == nullptr || *target.original == nullptr || target.detour == nullptr) {
                 continue;
             }
 
-            DetourAttach(originalPointer, hook->GetDetourFunction());
+            DetourAttach(target.original, target.detour);
+
+            _targets.push_back(target);
 
             ++count;
         }
@@ -39,6 +60,7 @@ namespace WPSProfileVerificationPatch {
         LONG result = DetourTransactionCommit();
 
         if (result != NO_ERROR) {
+            _targets.clear();
             count = 0;
 #if defined WP_DEBUG
             std::stringstream ss;
@@ -50,8 +72,8 @@ namespace WPSProfileVerificationPatch {
         return count;
     }
 
-    size_t HookManager::UninstallHooks(const std::vector<std::unique_ptr<IFunctionHook>>& hooks) {
-        if (hooks.size() == 0) {
+    size_t HookManager::UninstallHooks() {
+        if (_targets.empty()) {
             return 0;
         }
 
@@ -60,16 +82,11 @@ namespace WPSProfileVerificationPatch {
 
         size_t count = 0;
 
-        for (auto& hook : hooks) {
-            PVOID* originalPointer = hook->GetOriginalPointer();
-
-            if (*originalPointer == nullptr) {
-                continue;
+        for (const auto& target : _targets) {
+            if (target.original && *target.original && target.detour) {
+                DetourDetach(target.original, target.detour);
+                ++count;
             }
-
-            DetourDetach(originalPointer, hook->GetDetourFunction());
-
-            ++count;
         }
 
         LONG result = DetourTransactionCommit();
@@ -81,6 +98,8 @@ namespace WPSProfileVerificationPatch {
             ss << "Failed to uninstall hooks, error: " << result;
             MessageBoxA(nullptr, ss.str().c_str(), "Hook Uninstall Failed", MB_ICONSTOP);
 #endif
+        } else {
+            _targets.clear();
         }
 
         return count;
